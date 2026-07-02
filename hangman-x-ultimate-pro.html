@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Hangman X · Ultimate Pro</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎪</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0F0A1E;
+  --surface:#1B1330;
+  --surface-2:#241A40;
+  --surface-3:#2E2150;
+  --gold:#FFC24B;
+  --pink:#FF4F81;
+  --mint:#33E6A0;
+  --blue:#5B8CFF;
+  --text:#F3EEFF;
+  --text-dim:#A99FC7;
+  --border: rgba(255,194,75,0.16);
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0; overflow-x:hidden;}
+body{
+  background:
+    radial-gradient(ellipse 900px 500px at 50% -10%, rgba(255,194,75,0.10), transparent 60%),
+    radial-gradient(ellipse 700px 400px at 90% 100%, rgba(255,79,129,0.08), transparent 60%),
+    var(--bg);
+  color:var(--text);
+  font-family:'Space Grotesk', sans-serif;
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ---------- AMBIENT PARTICLE BACKDROP ---------- */
+#particles{position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden;}
+.particle{
+  position:absolute; border-radius:50%; filter:blur(2px);
+  animation:drift linear infinite;
+}
+@keyframes drift{
+  0%{transform:translateY(0) translateX(0); }
+  50%{transform:translateY(-26px) translateX(10px);}
+  100%{transform:translateY(0) translateX(0);}
+}
+
+/* ---------- SPLASH SCREEN ---------- */
+#splashScreen{
+  position:fixed; inset:0; z-index:200; display:flex; align-items:center; justify-content:center;
+  background:radial-gradient(ellipse 700px 500px at 50% 45%, rgba(255,194,75,0.14), transparent 65%), var(--bg);
+  transition:opacity .5s ease, transform .5s ease;
+}
+#splashScreen.hide{opacity:0; transform:scale(1.06); pointer-events:none;}
+.splash-inner{text-align:center;}
+.badge-ring{
+  width:120px; height:120px; border-radius:50%; margin:0 auto 22px;
+  display:flex; align-items:center; justify-content:center;
+  background:conic-gradient(from 0deg, var(--gold), var(--pink), var(--mint), var(--gold));
+  animation:spinRing 3.5s linear infinite;
+  padding:4px;
+}
+@keyframes spinRing{to{transform:rotate(360deg);}}
+.badge-inner{
+  width:100%; height:100%; border-radius:50%; background:var(--surface);
+  display:flex; align-items:center; justify-content:center; font-size:2.6rem;
+  box-shadow:inset 0 0 30px rgba(255,194,75,0.25);
+  animation:counterSpin 3.5s linear infinite;
+}
+@keyframes counterSpin{to{transform:rotate(-360deg);}}
+.splash-logo{
+  font-family:'Bungee', cursive; font-size:2.6rem; letter-spacing:1px;
+  background:linear-gradient(180deg, #FFE29A 0%, var(--gold) 55%, #C98A1F 100%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  text-shadow:0 0 30px rgba(255,194,75,0.4);
+  opacity:0; animation:logoIn .7s ease .25s forwards;
+}
+.splash-sub{
+  font-family:'Space Mono', monospace; font-size:0.72rem; letter-spacing:6px; color:var(--pink);
+  text-transform:uppercase; margin-top:8px;
+  opacity:0; animation:logoIn .7s ease .5s forwards;
+}
+@keyframes logoIn{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);}}
+
+/* ---------- LOADING SCREEN ---------- */
+#loadingScreen{
+  position:fixed; inset:0; z-index:190; display:none; align-items:center; justify-content:center; flex-direction:column;
+  background:var(--bg); opacity:0; transition:opacity .4s ease;
+}
+#loadingScreen.show{display:flex; opacity:1;}
+#loadingScreen.hide{opacity:0; pointer-events:none;}
+.load-logo{font-family:'Bungee', cursive; font-size:1.3rem; color:var(--gold); margin-bottom:26px; letter-spacing:1px;}
+.load-track{width:220px; height:8px; border-radius:6px; background:var(--surface-2); overflow:hidden; border:1px solid var(--border);}
+.load-fill{height:100%; width:0%; background:linear-gradient(90deg, var(--pink), var(--gold), var(--mint)); background-size:200% 100%; animation:shimmer 1.2s linear infinite; border-radius:6px; transition:width .1s linear;}
+@keyframes shimmer{0%{background-position:0% 0;} 100%{background-position:200% 0;}}
+.load-pct{font-family:'Space Mono', monospace; font-size:0.8rem; color:var(--text-dim); margin-top:10px;}
+.load-tip{font-family:'Space Mono', monospace; font-size:0.68rem; color:var(--text-dim); margin-top:22px; text-align:center; padding:0 30px; min-height:16px;}
+
+.app{max-width:480px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column; padding:0 0 32px; position:relative; z-index:1;
+  opacity:0; transition:opacity .5s ease;}
+.app.ready{opacity:1;}
+
+/* ---------- HEADER / MARQUEE ---------- */
+.marquee{padding:22px 20px 14px; text-align:center; position:relative;}
+.sound-toggle{
+  position:absolute; top:18px; right:16px; width:36px; height:36px; border-radius:50%;
+  background:var(--surface); border:1px solid var(--border); display:flex; align-items:center; justify-content:center;
+  cursor:pointer; font-size:1rem;
+}
+.sound-toggle:active{transform:scale(0.9);}
+.marquee-title{
+  font-family:'Bungee', cursive; font-size:2.1rem; letter-spacing:1px;
+  background:linear-gradient(180deg, #FFE29A 0%, var(--gold) 55%, #C98A1F 100%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  text-shadow:0 0 26px rgba(255,194,75,0.35); margin:0; line-height:1;
+}
+.marquee-sub{font-family:'Space Mono', monospace; font-size:0.68rem; letter-spacing:5px; color:var(--pink); margin-top:6px; text-transform:uppercase;}
+.bulb-row{display:flex; justify-content:center; gap:6px; margin-top:14px;}
+.bulb{width:6px; height:6px; border-radius:50%; background:var(--gold); box-shadow:0 0 8px var(--gold); animation:twinkle 1.8s infinite ease-in-out;}
+.bulb:nth-child(odd){animation-delay:.4s;}
+.bulb:nth-child(3n){animation-delay:.8s;}
+@keyframes twinkle{0%,100%{opacity:.35;} 50%{opacity:1;}}
+
+/* ---------- STAT BAR ---------- */
+.statbar{
+  display:flex; justify-content:space-between; gap:8px; margin:14px 16px 0; padding:10px 12px;
+  background:var(--surface); border:1px solid var(--border); border-radius:14px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.25);
+}
+.stat{display:flex; flex-direction:column; align-items:center; flex:1; font-family:'Space Mono', monospace;}
+.stat-icon{font-size:1rem; line-height:1;}
+.stat-val{font-size:0.92rem; font-weight:700; margin-top:2px; transition:transform .2s ease;}
+.stat-val.bump{animation:bump .35s ease;}
+@keyframes bump{0%{transform:scale(1);} 40%{transform:scale(1.35); color:var(--mint);} 100%{transform:scale(1);}}
+.stat-label{font-size:0.56rem; color:var(--text-dim); text-transform:uppercase; letter-spacing:1px; margin-top:1px;}
+
+/* ---------- GENERIC LAYOUT ---------- */
+.view{padding:18px 16px 8px; animation:fadeIn .3s ease;}
+@keyframes fadeIn{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);}}
+.section-title{font-family:'Bungee', cursive; font-size:1.15rem; color:var(--text); margin:4px 0 14px; text-align:center;}
+.section-sub{text-align:center; color:var(--text-dim); font-size:0.78rem; margin-top:-10px; margin-bottom:16px; font-family:'Space Mono',monospace;}
+.backbtn{background:none; border:1px solid var(--border); color:var(--text-dim); border-radius:10px; padding:7px 12px; font-family:'Space Grotesk'; font-size:0.8rem; cursor:pointer; margin-bottom:10px;}
+.backbtn:active{background:var(--surface-2);}
+
+/* ---------- MENU GRID ---------- */
+.menu-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+.menu-card{
+  background:linear-gradient(160deg, var(--surface), var(--surface-2));
+  border:1px solid var(--border); border-radius:16px; padding:18px 14px; text-align:left; cursor:pointer;
+  transition:transform .12s ease, border-color .12s ease, box-shadow .12s ease; color:var(--text);
+  box-shadow:0 6px 18px rgba(0,0,0,0.22); position:relative; overflow:hidden;
+}
+.menu-card:active{transform:scale(0.96); border-color:var(--gold);}
+.menu-card .icon{font-size:1.6rem; display:block; margin-bottom:8px;}
+.menu-card .title{font-weight:700; font-size:0.95rem;}
+.menu-card .desc{font-size:0.72rem; color:var(--text-dim); margin-top:2px;}
+.menu-card.wide{grid-column:1/3;}
+.menu-card.accent{border-color:rgba(255,194,75,0.4); background:linear-gradient(135deg, rgba(255,194,75,0.14), var(--surface));}
+.menu-card.wheel::after{
+  content:""; position:absolute; top:-30%; right:-20%; width:90px; height:90px; border-radius:50%;
+  background:conic-gradient(var(--gold),var(--pink),var(--mint),var(--gold)); opacity:0.18; animation:spinRing 6s linear infinite;
+}
+
+/* ---------- CATEGORY GRID ---------- */
+.cat-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+.cat-card{background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:20px 10px; text-align:center; cursor:pointer; box-shadow:0 6px 16px rgba(0,0,0,0.2);}
+.cat-card:active{border-color:var(--gold); transform:scale(0.97);}
+.cat-card .emoji{font-size:1.8rem;}
+.cat-card .name{font-weight:700; margin-top:8px; font-size:0.9rem;}
+.cat-card .count{font-size:0.68rem; color:var(--text-dim); font-family:'Space Mono',monospace; margin-top:2px;}
+.random-btn{margin-top:14px; width:100%; padding:15px; border:none; border-radius:14px; cursor:pointer; background:linear-gradient(90deg, var(--pink), var(--gold)); color:#1B1330; font-weight:700; font-family:'Space Grotesk'; font-size:0.95rem; box-shadow:0 8px 20px rgba(255,79,129,0.25);}
+.random-btn:active{transform:scale(0.98);}
+
+/* ---------- DIFFICULTY ---------- */
+.diff-list{display:flex; flex-direction:column; gap:10px;}
+.diff-btn{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; text-align:left; cursor:pointer; color:var(--text); display:flex; justify-content:space-between; align-items:center;}
+.diff-btn:active{border-color:var(--mint);}
+.diff-btn .dname{font-weight:700;}
+.diff-btn .ddesc{font-size:0.72rem; color:var(--text-dim); margin-top:2px;}
+.diff-btn .dtag{font-family:'Space Mono',monospace; font-size:0.7rem; padding:4px 8px; border-radius:8px; background:var(--surface-3); color:var(--gold);}
+
+/* ---------- GAME SCREEN ---------- */
+.game-top{display:flex; justify-content:space-between; align-items:center; font-family:'Space Mono',monospace; font-size:0.7rem; color:var(--text-dim); margin-bottom:10px;}
+.timerbar-wrap{height:6px; background:var(--surface-2); border-radius:4px; overflow:hidden; margin-bottom:14px;}
+.timerbar{height:100%; background:linear-gradient(90deg, var(--mint), var(--gold)); width:100%; transition:width 1s linear;}
+.stage-wrap{
+  background:radial-gradient(ellipse at 50% 20%, rgba(255,194,75,0.10), transparent 65%), var(--surface);
+  border:1px solid var(--border); border-radius:18px; padding:14px; display:flex; justify-content:center;
+  box-shadow:0 10px 30px rgba(0,0,0,0.3); transition:transform .18s ease;
+}
+.stage-wrap.shake{animation:shakeX .4s ease;}
+@keyframes shakeX{0%,100%{transform:translateX(0);} 20%{transform:translateX(-8px);} 40%{transform:translateX(7px);} 60%{transform:translateX(-5px);} 80%{transform:translateX(4px);}}
+.stage-wrap svg{width:180px; height:180px;}
+.gallows-line{stroke:var(--text-dim); stroke-width:4; fill:none; stroke-linecap:round;}
+#figureGroup{transform-origin:120px 40px; transition:opacity .2s ease;}
+#figureGroup.swing{animation:swing 1.4s ease-in-out infinite;}
+@keyframes swing{0%,100%{transform:rotate(-6deg);} 50%{transform:rotate(6deg);}}
+.figure-line{stroke:var(--pink); stroke-width:5; fill:none; stroke-linecap:round; filter:drop-shadow(0 0 6px rgba(255,79,129,0.6)); opacity:0; animation:limbIn .3s ease forwards;}
+@keyframes limbIn{from{opacity:0; transform:scale(0.6);} to{opacity:1; transform:scale(1);}}
+.word-row{display:flex; justify-content:center; flex-wrap:wrap; gap:6px; margin:18px 0;}
+.letter-slot{width:30px; height:38px; border-bottom:3px solid var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Space Mono',monospace; font-weight:700; font-size:1.15rem; text-transform:uppercase;}
+.letter-slot.filled{border-bottom-color:var(--mint); color:var(--mint); animation:pop .35s ease;}
+@keyframes pop{0%{transform:scale(0.3);} 60%{transform:scale(1.25);} 100%{transform:scale(1);}}
+.keyboard{display:grid; grid-template-columns:repeat(7, 1fr); gap:6px; margin-top:10px;}
+.key{padding:10px 0; text-align:center; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-weight:700; font-size:0.85rem; cursor:pointer; text-transform:uppercase; font-family:'Space Mono',monospace; transition:transform .1s ease;}
+.key:active{transform:scale(0.9);}
+.key.correct{background:rgba(51,230,160,0.18); border-color:var(--mint); color:var(--mint);}
+.key.wrong{background:rgba(255,79,129,0.16); border-color:var(--pink); color:var(--pink); opacity:0.55;}
+.key.disabled{pointer-events:none;}
+.game-actions{display:flex; gap:10px; margin-top:16px;}
+.action-btn{flex:1; padding:12px; border-radius:12px; border:1px solid var(--border); background:var(--surface-2); color:var(--text); font-weight:700; cursor:pointer; font-size:0.82rem;}
+.action-btn.hint{color:var(--gold); border-color:rgba(255,194,75,0.4);}
+.action-btn.quit{color:var(--pink); border-color:rgba(255,79,129,0.4);}
+.action-btn:active{transform:scale(0.96);}
+
+/* ---------- RESULT MODAL ---------- */
+.overlay{position:fixed; inset:0; background:rgba(6,3,15,0.82); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:60; padding:20px;}
+#confettiCanvas{position:fixed; inset:0; z-index:61; pointer-events:none;}
+.result-card{background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:26px 22px; max-width:380px; width:100%; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.5); animation:cardIn .35s ease;}
+@keyframes cardIn{from{opacity:0; transform:scale(0.85) translateY(20px);} to{opacity:1; transform:scale(1) translateY(0);}}
+.result-emoji{font-size:2.6rem;}
+.result-title{font-family:'Bungee', cursive; font-size:1.3rem; margin:10px 0 4px;}
+.result-title.win{color:var(--mint);}
+.result-title.lose{color:var(--pink);}
+.result-word{font-family:'Space Mono',monospace; letter-spacing:3px; color:var(--gold); margin:8px 0 14px; font-size:1.1rem;}
+.reward-row{display:flex; justify-content:center; gap:14px; margin:10px 0 18px; font-family:'Space Mono',monospace; font-size:0.85rem;}
+.reward-pill{background:var(--surface-2); border-radius:10px; padding:6px 12px;}
+.achieve-toast{background:linear-gradient(135deg, rgba(255,194,75,0.18), var(--surface-2)); border:1px solid var(--gold); border-radius:12px; padding:10px 12px; margin-top:10px; font-size:0.78rem; text-align:left;}
+.achieve-toast b{color:var(--gold);}
+.result-btn{margin-top:10px; width:100%; padding:13px; border:none; border-radius:12px; cursor:pointer; background:linear-gradient(90deg, var(--gold), var(--pink)); color:#1B1330; font-weight:700;}
+
+/* ---------- SHOP ---------- */
+.shop-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;}
+.coin-badge{font-family:'Space Mono',monospace; background:var(--surface-2); border:1px solid var(--gold); color:var(--gold); border-radius:20px; padding:6px 14px; font-weight:700; font-size:0.85rem;}
+.shop-stats{display:flex; gap:10px; margin-bottom:16px;}
+.shop-stat-box{flex:1; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px; text-align:center;}
+.shop-stat-box .num{font-family:'Space Mono',monospace; font-weight:700; font-size:1.4rem;}
+.shop-item{display:flex; justify-content:space-between; align-items:center; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:10px; box-shadow:0 6px 16px rgba(0,0,0,0.18);}
+.shop-item .info b{font-size:0.9rem;}
+.shop-item .info div{font-size:0.72rem; color:var(--text-dim); margin-top:2px;}
+.buy-btn{background:linear-gradient(90deg, #5B8CFF, #8E6BFF); border:none; color:#fff; padding:9px 16px; border-radius:10px; font-weight:700; font-size:0.82rem; cursor:pointer;}
+.buy-btn:disabled{opacity:0.35;}
+
+/* ---------- ACHIEVEMENTS ---------- */
+.ach-progress{background:linear-gradient(135deg, var(--gold), #C98A1F); color:#1B1330; border-radius:16px; padding:18px; text-align:center; margin-bottom:16px; box-shadow:0 10px 26px rgba(255,194,75,0.2);}
+.ach-progress .big{font-family:'Bungee', cursive; font-size:1.8rem;}
+.ach-item{display:flex; justify-content:space-between; align-items:center; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:13px 14px; margin-bottom:9px;}
+.ach-item.done{border-color:var(--mint);}
+.ach-item .left{display:flex; gap:10px; align-items:center;}
+.ach-icon{font-size:1.3rem;}
+.ach-name{font-weight:700; font-size:0.86rem;}
+.ach-desc{font-size:0.7rem; color:var(--text-dim); margin-top:1px;}
+.ach-reward{font-family:'Space Mono',monospace; font-size:0.78rem; color:var(--gold);}
+.ach-item.done .ach-reward{color:var(--mint);}
+
+/* ---------- LEADERBOARD ---------- */
+.empty-state{text-align:center; padding:50px 20px; color:var(--text-dim);}
+.empty-state .emoji{font-size:2.6rem; display:block; margin-bottom:10px;}
+.lb-row{display:flex; align-items:center; gap:12px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:11px 13px; margin-bottom:8px;}
+.lb-rank{font-family:'Bungee', cursive; font-size:1rem; color:var(--gold); width:22px;}
+.lb-info{flex:1;}
+.lb-info b{font-size:0.85rem;}
+.lb-info div{font-size:0.68rem; color:var(--text-dim); margin-top:1px;}
+.lb-score{font-family:'Space Mono',monospace; font-weight:700; color:var(--mint);}
+
+/* ---------- CUSTOM WORDS ---------- */
+.cw-input-row{display:flex; gap:8px; margin-bottom:14px;}
+.cw-input{flex:1; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:11px 12px; color:var(--text); font-family:'Space Grotesk'; font-size:0.9rem;}
+.cw-input:focus{outline:none; border-color:var(--gold);}
+.cw-add{background:var(--mint); border:none; border-radius:10px; padding:0 16px; font-weight:700; cursor:pointer; color:#0F0A1E;}
+.cw-chip-wrap{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px;}
+.cw-chip{background:var(--surface-2); border:1px solid var(--border); border-radius:20px; padding:7px 10px 7px 14px; font-size:0.8rem; display:flex; align-items:center; gap:8px; font-family:'Space Mono',monospace;}
+.cw-chip .x{cursor:pointer; color:var(--pink); font-weight:700;}
+.play-cw-btn{width:100%; padding:14px; border:none; border-radius:14px; cursor:pointer; background:linear-gradient(90deg, var(--mint), #5B8CFF); color:#0F0A1E; font-weight:700;}
+.play-cw-btn:disabled{opacity:0.3;}
+
+/* ---------- BONUS WHEEL ---------- */
+.wheel-stage{display:flex; flex-direction:column; align-items:center; margin:10px 0 20px;}
+.wheel-pointer{width:0; height:0; border-left:12px solid transparent; border-right:12px solid transparent; border-top:18px solid var(--gold); margin-bottom:-4px; z-index:2; filter:drop-shadow(0 0 6px rgba(255,194,75,0.6));}
+.wheel-outer{
+  width:240px; height:240px; border-radius:50%; position:relative;
+  border:6px solid var(--surface-3); box-shadow:0 0 0 3px var(--gold), 0 20px 50px rgba(0,0,0,0.4);
+}
+#wheel{width:100%; height:100%; border-radius:50%; position:relative; transform:rotate(0deg);}
+.wheel-seg{
+  position:absolute; width:50%; height:50%; top:0; left:50%; transform-origin:0% 100%;
+  display:flex; align-items:flex-start; justify-content:center; padding-top:14px;
+  font-family:'Space Mono',monospace; font-size:0.62rem; font-weight:700; color:#1B1330;
+}
+.wheel-hub{position:absolute; top:50%; left:50%; width:44px; height:44px; margin:-22px; border-radius:50%; background:var(--surface); border:3px solid var(--gold); display:flex; align-items:center; justify-content:center; font-size:1.2rem; z-index:3;}
+.spin-btn{margin-top:22px; width:100%; padding:15px; border:none; border-radius:14px; cursor:pointer; background:linear-gradient(90deg, var(--pink), var(--gold)); color:#1B1330; font-weight:700; font-size:0.95rem;}
+.spin-btn:disabled{opacity:0.35;}
+.wheel-note{font-size:0.7rem; color:var(--text-dim); text-align:center; margin-top:10px; font-family:'Space Mono',monospace;}
+
+/* ---------- SAVE / DATA ---------- */
+.save-box{background:var(--surface); border:1px dashed var(--border); border-radius:14px; padding:14px; margin-top:20px; font-size:0.75rem; color:var(--text-dim); text-align:center;}
+.save-actions{display:flex; gap:8px; margin-top:10px;}
+.save-actions button{flex:1; padding:9px; border-radius:10px; border:1px solid var(--border); background:var(--surface-2); color:var(--text); font-size:0.75rem; cursor:pointer;}
+
+/* ---------- BOTTOM NAV ---------- */
+.bottom-nav{position:sticky; bottom:0; display:flex; background:rgba(27,19,48,0.92); backdrop-filter:blur(8px); border-top:1px solid var(--border); margin-top:auto; padding:8px 6px calc(8px + env(safe-area-inset-bottom)); z-index:5;}
+.nav-btn{flex:1; background:none; border:none; color:var(--text-dim); font-family:'Space Grotesk'; font-size:0.62rem; display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer; padding:4px 0;}
+.nav-btn .ni{font-size:1.15rem;}
+.nav-btn.active{color:var(--gold);}
+</style>
+</head>
+<body>
+
+<div id="particles"></div>
+
+<div id="splashScreen">
+  <div class="splash-inner">
+    <div class="badge-ring"><div class="badge-inner">🎪</div></div>
+    <div class="splash-logo">HANGMAN X</div>
+    <div class="splash-sub">Ultimate Pro</div>
+  </div>
+</div>
+
+<div id="loadingScreen">
+  <div class="load-logo">HANGMAN X</div>
+  <div class="load-track"><div class="load-fill" id="loadFill"></div></div>
+  <div class="load-pct" id="loadPct">0%</div>
+  <div class="load-tip" id="loadTip">Warming up the gallows...</div>
+</div>
+
+<div class="app" id="app">
+
+  <div class="marquee">
+    <button class="sound-toggle" id="soundToggle">🔊</button>
+    <h1 class="marquee-title">HANGMAN X</h1>
+    <div class="marquee-sub">ULTIMATE PRO</div>
+    <div class="bulb-row" id="bulbRow"></div>
+  </div>
+
+  <div class="statbar">
+    <div class="stat"><span class="stat-icon">💰</span><span class="stat-val" id="statCoins">100</span><span class="stat-label">Coins</span></div>
+    <div class="stat"><span class="stat-icon">💡</span><span class="stat-val" id="statHints">3</span><span class="stat-label">Hints</span></div>
+    <div class="stat"><span class="stat-icon">❤️</span><span class="stat-val" id="statLives">1</span><span class="stat-label">Lives</span></div>
+    <div class="stat"><span class="stat-icon">⭐</span><span class="stat-val" id="statStars">0</span><span class="stat-label">Stars</span></div>
+    <div class="stat"><span class="stat-icon">🎖️</span><span class="stat-val" id="statLevel">1</span><span class="stat-label">Level</span></div>
+  </div>
+
+  <div id="viewHost"></div>
+
+  <div class="bottom-nav">
+    <button class="nav-btn active" data-nav="home"><span class="ni">🏠</span>Home</button>
+    <button class="nav-btn" data-nav="shop"><span class="ni">🛍️</span>Shop</button>
+    <button class="nav-btn" data-nav="achievements"><span class="ni">🏆</span>Trophies</button>
+    <button class="nav-btn" data-nav="leaderboard"><span class="ni">📊</span>Ranks</button>
+    <button class="nav-btn" data-nav="data"><span class="ni">💾</span>Save</button>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   HANGMAN X ULTIMATE PRO — single-file vanilla JS web app
+   100% free, no backend, no build step, no external deps
+   besides Google Fonts (safe to remove for full offline use)
+========================================================= */
+
+const WORD_BANK = {
+  Fruits:      {emoji:"🍎", words:["apple","banana","mango","orange","grape","papaya","guava","pineapple","watermelon","kiwi","cherry","peach","plum","lychee","pomegranate","strawberry","blueberry","coconut","fig","apricot"]},
+  Countries:   {emoji:"🌍", words:["india","japan","canada","brazil","germany","france","italy","spain","russia","china","egypt","kenya","mexico","norway","sweden","turkey","nepal","bhutan","australia"]},
+  Sports:      {emoji:"⚽", words:["cricket","football","hockey","tennis","badminton","boxing","wrestling","swimming","cycling","archery","kabaddi","chess","golf","rugby","volleyball","basketball","skating","shooting","athletics"]},
+  Food:        {emoji:"🍔", words:["pizza","burger","biryani","samosa","noodles","pasta","dosa","paneer","momos","kebab","sandwich","sushi","tacos","pancake","waffle","curry","chowmein","cupcake","omelette","pudding"]},
+  Movies:      {emoji:"🎬", words:["avatar","titanic","inception","gladiator","interstellar","joker","avengers","matrix","frozen","coco","dangal","sholay","dunki","oppenheimer","barbie","moana","up"]},
+  Science:     {emoji:"🧪", words:["gravity","electron","molecule","photon","neutron","genome","quantum","friction","velocity","enzyme","isotope","vacuum","nucleus","magnet","reflex","osmosis","catalyst"]},
+  Programming: {emoji:"</>", words:["python","variable","function","loop","array","string","integer","boolean","class","object","compiler","syntax","debug","algorithm","recursion","pointer","database","keyword","module","library","framework","exception","iterator","operator","runtime"]},
+  Animals:     {emoji:"🐾", words:["tiger","elephant","giraffe","kangaroo","dolphin","penguin","cheetah","panda","zebra","leopard","octopus","peacock","crocodile","rabbit","camel","eagle","wolf","fox","otter","koala","bison","buffalo","hedgehog"]},
+};
+
+const ACHIEVEMENTS = [
+  {id:"first_victory", name:"First Victory", desc:"Win your first game", reward:20, icon:"🥇", check:p=>p.totalWins>=1},
+  {id:"on_fire",       name:"On Fire",       desc:"Win 5 games in a row", reward:50, icon:"🔥", check:p=>p.bestStreak>=5},
+  {id:"unstoppable",   name:"Unstoppable",   desc:"Win 10 games in a row", reward:150, icon:"⚡", check:p=>p.bestStreak>=10},
+  {id:"getting_good",  name:"Getting Good",  desc:"Win 10 games total", reward:50, icon:"📈", check:p=>p.totalWins>=10},
+  {id:"word_master",   name:"Word Master",   desc:"Win 50 games total", reward:250, icon:"👑", check:p=>p.totalWins>=50},
+  {id:"coin_collector",name:"Coin Collector",desc:"Earn 500 coins lifetime", reward:30, icon:"🪙", check:p=>p.lifetimeCoins>=500},
+  {id:"wealthy",       name:"Wealthy",       desc:"Earn 2000 coins lifetime", reward:100, icon:"💎", check:p=>p.lifetimeCoins>=2000},
+  {id:"hard_mode",     name:"Hard Mode",     desc:"Win on Hard difficulty", reward:75, icon:"💀", check:p=>p.hardWin},
+  {id:"pure_skill",    name:"Pure Skill",    desc:"Win without using a hint", reward:40, icon:"🎯", check:p=>p.noHintWin},
+  {id:"speed_demon",   name:"Speed Demon",   desc:"Win a Timer Challenge", reward:60, icon:"⏱️", check:p=>p.timerWin},
+];
+
+const SHOP_ITEMS = [
+  {key:"h1", name:"1 Hint", desc:"Reveal a random letter", cost:40, type:"hints", qty:1, icon:"💡"},
+  {key:"h5", name:"5 Hints", desc:"Save 25 coins", cost:175, type:"hints", qty:5, icon:"💡"},
+  {key:"l1", name:"1 Extra Life", desc:"Restore a wrong guess", cost:60, type:"lives", qty:1, icon:"❤️"},
+  {key:"l3", name:"3 Extra Lives", desc:"Best value pack", cost:160, type:"lives", qty:3, icon:"💕"},
+];
+
+const WHEEL_SEGMENTS = [
+  {label:"+20",  type:"coins", value:20,  color:"#FFC24B"},
+  {label:"+10",  type:"coins", value:10,  color:"#2E2150"},
+  {label:"1 HINT", type:"hints", value:1, color:"#33E6A0"},
+  {label:"+50",  type:"coins", value:50,  color:"#FFC24B"},
+  {label:"1 LIFE", type:"lives", value:1, color:"#FF4F81"},
+  {label:"+100", type:"coins", value:100, color:"#FFC24B"},
+  {label:"2 HINTS", type:"hints", value:2, color:"#33E6A0"},
+  {label:"JACKPOT", type:"coins", value:200, color:"#FF4F81"},
+];
+const WHEEL_WEIGHTS = [18, 22, 14, 10, 12, 8, 10, 6]; // jackpot rarest
+
+const DEFAULT_STATE = {
+  coins:100, hints:3, lives:1, stars:0, level:1,
+  totalWins:0, gamesPlayed:0, currentStreak:0, bestStreak:0, lifetimeCoins:100,
+  hardWin:false, noHintWin:false, timerWin:false,
+  unlocked:[], customWords:[], leaderboard:[], wheelSpun:false, soundOn:true
+};
+
+let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+let game = null;
+
+/* ---------------- helpers ---------------- */
+const $ = sel => document.querySelector(sel);
+const host = () => $("#viewHost");
+const ALPHABET = "abcdefghijklmnopqrstuvwxyz".split("");
+
+/* ---------------- SOUND ENGINE (Web Audio, no files) ---------------- */
+let actx = null;
+function ensureAudio(){ if(!actx){ try{ actx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } }
+function beep(freq, dur, type, gainVal){
+  if(!state.soundOn) return;
+  ensureAudio();
+  if(!actx) return;
+  const osc = actx.createOscillator();
+  const gain = actx.createGain();
+  osc.type = type||"sine";
+  osc.frequency.value = freq;
+  gain.gain.value = gainVal||0.08;
+  osc.connect(gain); gain.connect(actx.destination);
+  const now = actx.currentTime;
+  gain.gain.setValueAtTime(gain.gain.value, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+  osc.start(now); osc.stop(now + dur);
+}
+function sfxClick(){ beep(440,0.06,"square",0.05); }
+function sfxCorrect(){ beep(660,0.12,"triangle",0.09); setTimeout(()=>beep(880,0.12,"triangle",0.07),80); }
+function sfxWrong(){ beep(160,0.22,"sawtooth",0.08); }
+function sfxWin(){ [523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,0.25,"triangle",0.09), i*110)); }
+function sfxLose(){ [300,240,180].forEach((f,i)=>setTimeout(()=>beep(f,0.3,"sawtooth",0.07), i*140)); }
+function sfxCoin(){ beep(988,0.09,"square",0.06); setTimeout(()=>beep(1318,0.09,"square",0.05),60); }
+function sfxAchieve(){ [660,880,1108,1318].forEach((f,i)=>setTimeout(()=>beep(f,0.2,"triangle",0.08), i*90)); }
+function haptic(ms){ try{ if(navigator.vibrate && state.soundOn) navigator.vibrate(ms); }catch(e){} }
+
+/* ---------------- state helpers ---------------- */
+function addCoins(n){ state.coins += n; if(n>0) state.lifetimeCoins += n; }
+function addStars(n){
+  state.stars += n;
+  const newLevel = 1 + Math.floor(state.stars/100);
+  if(newLevel > state.level){ state.level = newLevel; return true; }
+  return false;
+}
+function refreshStats(bumpKeys){
+  const map = {statCoins:state.coins, statHints:state.hints, statLives:state.lives, statStars:state.stars, statLevel:state.level};
+  Object.keys(map).forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.textContent = map[id];
+    if(bumpKeys && bumpKeys.includes(id)){
+      el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump");
+    }
+  });
+}
+function checkAchievements(){
+  const unlocked = [];
+  ACHIEVEMENTS.forEach(a=>{
+    if(!state.unlocked.includes(a.id) && a.check(state)){
+      state.unlocked.push(a.id);
+      addCoins(a.reward);
+      unlocked.push(a);
+    }
+  });
+  if(unlocked.length) sfxAchieve();
+  return unlocked;
+}
+function setActiveNav(name){
+  document.querySelectorAll(".nav-btn").forEach(b=> b.classList.toggle("active", b.dataset.nav===name));
+}
+
+/* ---------------- ambient particles ---------------- */
+(function initParticles(){
+  const wrap = $("#particles");
+  const colors = ["#FFC24B","#FF4F81","#33E6A0","#5B8CFF"];
+  for(let i=0;i<16;i++){
+    const p = document.createElement("div");
+    p.className = "particle";
+    const size = 30 + Math.random()*90;
+    p.style.width = size+"px"; p.style.height = size+"px";
+    p.style.left = (Math.random()*100)+"vw";
+    p.style.top = (Math.random()*100)+"vh";
+    p.style.background = colors[i%colors.length];
+    p.style.opacity = (0.05 + Math.random()*0.10).toFixed(2);
+    p.style.animationDuration = (8 + Math.random()*10)+"s";
+    p.style.animationDelay = (Math.random()*4)+"s";
+    wrap.appendChild(p);
+  }
+})();
+
+/* ---------------- bulb row ---------------- */
+(function initBulbs(){
+  const row = $("#bulbRow");
+  for(let i=0;i<11;i++){ const d=document.createElement("div"); d.className="bulb"; row.appendChild(d); }
+})();
+
+/* ---------------- sound toggle ---------------- */
+$("#soundToggle").addEventListener("click", ()=>{
+  state.soundOn = !state.soundOn;
+  $("#soundToggle").textContent = state.soundOn ? "🔊" : "🔇";
+  if(state.soundOn) sfxClick();
+});
+
+/* ============ BOOT SEQUENCE: splash -> loading -> app ============ */
+const LOAD_TIPS = [
+  "Warming up the gallows...",
+  "Shuffling word categories...",
+  "Polishing the marquee lights...",
+  "Counting your coins...",
+  "Sharpening hints...",
+  "Almost ready to play..."
+];
+function bootSequence(){
+  // Phase 1: splash for 2000ms
+  setTimeout(()=>{
+    $("#splashScreen").classList.add("hide");
+    setTimeout(()=>{
+      $("#splashScreen").style.display = "none";
+      startLoading();
+    }, 500);
+  }, 2000);
+}
+function startLoading(){
+  const loadingEl = $("#loadingScreen");
+  loadingEl.classList.add("show");
+  const fill = $("#loadFill"), pct = $("#loadPct"), tip = $("#loadTip");
+  let progress = 0;
+  let tipIndex = 0;
+  tip.textContent = LOAD_TIPS[0];
+  const tipInterval = setInterval(()=>{
+    tipIndex = (tipIndex+1) % LOAD_TIPS.length;
+    tip.textContent = LOAD_TIPS[tipIndex];
+  }, 380);
+  const totalDuration = 1900;
+  const stepMs = 40;
+  const steps = totalDuration / stepMs;
+  let step = 0;
+  const progInterval = setInterval(()=>{
+    step++;
+    progress = Math.min(100, Math.round((step/steps)*100));
+    fill.style.width = progress + "%";
+    pct.textContent = progress + "%";
+    if(progress >= 100){
+      clearInterval(progInterval);
+      clearInterval(tipInterval);
+      setTimeout(()=>{
+        loadingEl.classList.add("hide");
+        setTimeout(()=>{
+          loadingEl.style.display = "none";
+          const appEl = $("#app");
+          appEl.classList.add("ready");
+          refreshStats();
+          renderHome();
+        }, 400);
+      }, 250);
+    }
+  }, stepMs);
+}
+bootSequence();
+
+/* ============ VIEW: HOME ============ */
+function renderHome(){
+  setActiveNav("home");
+  host().innerHTML = `
+    <div class="view">
+      <div class="menu-grid">
+        <div class="menu-card accent wide" data-go="category:single">
+          <span class="icon">🎯</span>
+          <div class="title">Single Player</div>
+          <div class="desc">Classic hangman, pick a category & difficulty</div>
+        </div>
+        <div class="menu-card" data-go="category:timer">
+          <span class="icon">⏱️</span>
+          <div class="title">Timer Challenge</div>
+          <div class="desc">60 seconds. Beat the clock.</div>
+        </div>
+        <div class="menu-card" data-go="customwords">
+          <span class="icon">✏️</span>
+          <div class="title">Custom Words</div>
+          <div class="desc">Play your own word list</div>
+        </div>
+        <div class="menu-card wheel" data-go="wheel">
+          <span class="icon">🎡</span>
+          <div class="title">Bonus Wheel</div>
+          <div class="desc">${state.wheelSpun ? "Come back next time!" : "Free spin available"}</div>
+        </div>
+        <div class="menu-card" data-go="shop">
+          <span class="icon">🛍️</span>
+          <div class="title">Shop</div>
+          <div class="desc">Hints &amp; lives</div>
+        </div>
+        <div class="menu-card" data-go="achievements">
+          <span class="icon">🏆</span>
+          <div class="title">Achievements</div>
+          <div class="desc">Unlock trophies</div>
+        </div>
+        <div class="menu-card wide" data-go="leaderboard">
+          <span class="icon">📊</span>
+          <div class="title">Leaderboard</div>
+          <div class="desc">Top scores</div>
+        </div>
+      </div>
+    </div>
+  `;
+  host().querySelectorAll("[data-go]").forEach(el=>{
+    el.addEventListener("click", ()=>{
+      sfxClick();
+      const [view, arg] = el.dataset.go.split(":");
+      if(view==="category") renderCategory(arg);
+      else if(view==="customwords") renderCustomWords();
+      else if(view==="shop") renderShop();
+      else if(view==="achievements") renderAchievements();
+      else if(view==="leaderboard") renderLeaderboard();
+      else if(view==="wheel") renderWheel();
+    });
+  });
+}
+
+/* ============ VIEW: CATEGORY SELECT ============ */
+function renderCategory(mode){
+  const label = mode==="timer" ? "Timer Challenge" : "Single Player";
+  const cats = Object.keys(WORD_BANK);
+  host().innerHTML = `
+    <div class="view">
+      <button class="backbtn" id="backBtn">‹ Back</button>
+      <div class="section-title">Choose Category</div>
+      <div class="section-sub">${label}</div>
+      <div class="cat-grid">
+        ${cats.map(c=>`
+          <div class="cat-card" data-cat="${c}">
+            <div class="emoji">${WORD_BANK[c].emoji}</div>
+            <div class="name">${c}</div>
+            <div class="count">${WORD_BANK[c].words.length} words</div>
+          </div>
+        `).join("")}
+      </div>
+      <button class="random-btn" id="randomBtn">🔀 Start Random</button>
+    </div>
+  `;
+  $("#backBtn").onclick = ()=>{ sfxClick(); renderHome(); };
+  $("#randomBtn").onclick = ()=>{
+    sfxClick();
+    const c = cats[Math.floor(Math.random()*cats.length)];
+    renderDifficulty(c, mode);
+  };
+  host().querySelectorAll("[data-cat]").forEach(el=>{
+    el.addEventListener("click", ()=>{ sfxClick(); renderDifficulty(el.dataset.cat, mode); });
+  });
+}
+
+/* ============ VIEW: DIFFICULTY SELECT ============ */
+function renderDifficulty(category, mode){
+  host().innerHTML = `
+    <div class="view">
+      <button class="backbtn" id="backBtn">‹ Back</button>
+      <div class="section-title">Select Difficulty</div>
+      <div class="section-sub">${category}</div>
+      <div class="diff-list">
+        <button class="diff-btn" data-d="Easy">
+          <div><div class="dname">Easy</div><div class="ddesc">Short words, 6 wrong guesses allowed</div></div>
+          <span class="dtag">≤5 letters</span>
+        </button>
+        <button class="diff-btn" data-d="Normal">
+          <div><div class="dname">Normal</div><div class="ddesc">Any word length, 6 wrong guesses allowed</div></div>
+          <span class="dtag">standard</span>
+        </button>
+        <button class="diff-btn" data-d="Hard">
+          <div><div class="dname">Hard</div><div class="ddesc">Long words, only 4 wrong guesses allowed</div></div>
+          <span class="dtag">≥7 letters</span>
+        </button>
+      </div>
+    </div>
+  `;
+  $("#backBtn").onclick = ()=>{ sfxClick(); renderCategory(mode); };
+  host().querySelectorAll("[data-d]").forEach(el=>{
+    el.addEventListener("click", ()=>{ sfxClick(); startGame(category, el.dataset.d, mode); });
+  });
+}
+
+/* ============ CUSTOM WORDS ============ */
+function renderCustomWords(){
+  host().innerHTML = `
+    <div class="view">
+      <button class="backbtn" id="backBtn">‹ Back</button>
+      <div class="section-title">Custom Words</div>
+      <div class="section-sub">Play your own word list</div>
+      <div class="cw-input-row">
+        <input class="cw-input" id="cwInput" placeholder="Type a word (3+ letters)" maxlength="20">
+        <button class="cw-add" id="cwAdd">Add</button>
+      </div>
+      <div class="cw-chip-wrap" id="cwChips"></div>
+      <button class="play-cw-btn" id="cwPlay" ${state.customWords.length<1 ? "disabled":""}>▶ Play With Custom Words</button>
+    </div>
+  `;
+  $("#backBtn").onclick = ()=>{ sfxClick(); renderHome(); };
+  function renderChips(){
+    $("#cwChips").innerHTML = state.customWords.map((w,i)=>`
+      <div class="cw-chip">${w}<span class="x" data-i="${i}">✕</span></div>
+    `).join("") || `<div style="color:var(--text-dim); font-size:0.8rem;">No custom words yet.</div>`;
+    $("#cwChips").querySelectorAll(".x").forEach(x=>{
+      x.addEventListener("click", ()=>{
+        sfxClick();
+        state.customWords.splice(Number(x.dataset.i),1);
+        renderChips();
+        $("#cwPlay").disabled = state.customWords.length<1;
+      });
+    });
+  }
+  renderChips();
+  $("#cwAdd").onclick = ()=>{
+    const val = $("#cwInput").value.trim().toLowerCase();
+    if(/^[a-z]{3,20}$/.test(val)){
+      sfxCorrect();
+      state.customWords.push(val);
+      $("#cwInput").value="";
+      renderChips();
+      $("#cwPlay").disabled = state.customWords.length<1;
+    } else {
+      sfxWrong();
+      $("#cwInput").style.borderColor = "var(--pink)";
+      setTimeout(()=> $("#cwInput").style.borderColor = "var(--border)", 600);
+    }
+  };
+  $("#cwPlay").onclick = ()=>{
+    if(state.customWords.length<1) return;
+    sfxClick();
+    renderDifficultyCustom();
+  };
+}
+function renderDifficultyCustom(){
+  host().innerHTML = `
+    <div class="view">
+      <button class="backbtn" id="backBtn">‹ Back</button>
+      <div class="section-title">Select Difficulty</div>
+      <div class="section-sub">Custom Words</div>
+      <div class="diff-list">
+        <button class="diff-btn" data-d="Easy"><div><div class="dname">Easy</div><div class="ddesc">Short words, 6 wrong guesses</div></div><span class="dtag">≤5 letters</span></button>
+        <button class="diff-btn" data-d="Normal"><div><div class="dname">Normal</div><div class="ddesc">Any length, 6 wrong guesses</div></div><span class="dtag">standard</span></button>
+        <button class="diff-btn" data-d="Hard"><div><div class="dname">Hard</div><div class="ddesc">Long words, 4 wrong guesses</div></div><span class="dtag">≥7 letters</span></button>
+      </div>
+    </div>
+  `;
+  $("#backBtn").onclick = ()=>{ sfxClick(); renderCustomWords(); };
+  host().querySelectorAll("[data-d]").forEach(el=>{
+    el.addEventListener("click", ()=>{ sfxClick(); startGame("Custom", el.dataset.d, "custom"); });
+  });
+}
+
+/* ============ BONUS WHEEL ============ */
+function renderWheel(){
+  const segAngle = 360 / WHEEL_SEGMENTS.length;
+  host().innerHTML = `
+    <div class="view">
+      <button class="backbtn" id="backBtn">‹ Back</button>
+      <div class="section-title">Bonus Wheel</div>
+      <div class="section-sub">One free spin per visit</div>
+      <div class="wheel-stage">
+        <div class="wheel-pointer"></div>
+        <div class="wheel-outer">
+          <div id="wheel">
+            ${WHEEL_SEGMENTS.map((s,i)=>`
+              <div class="wheel-seg" style="transform:rotate(${i*segAngle}deg) skewY(${segAngle-90}deg); background:${s.color};">
+                <span style="transform:skewY(${-(segAngle-90)}deg) rotate(${segAngle/2}deg); display:inline-block;">${s.label}</span>
+              </div>
+            `).join("")}
+          </div>
+          <div class="wheel-hub">🎯</div>
+        </div>
+      </div>
+      <button class="spin-btn" id="spinBtn" ${state.wheelSpun?"disabled":""}>${state.wheelSpun?"Already Spun":"🎡 SPIN NOW"}</button>
+      <div class="wheel-note">Win coins, hints, or extra lives — totally free!</div>
+    </div>
+  `;
+  $("#backBtn").onclick = ()=>{ sfxClick(); renderHome(); };
+  $("#spinBtn").onclick = spinWheel;
+}
+function weightedIndex(weights){
+  const total = weights.reduce((a,b)=>a+b,0);
+  let r = Math.random()*total;
+  for(let i=0;i<weights.length;i++){
+    if(r < weights[i]) return i;
+    r -= weights[i];
+  }
+  return weights.length-1;
+}
+function spinWheel(){
+  if(state.wheelSpun) return;
+  const btn = $("#spinBtn");
+  btn.disabled = true;
+  sfxClick();
+  const idx = weightedIndex(WHEEL_WEIGHTS);
+  const segAngle = 360 / WHEEL_SEGMENTS.length;
+  const target = idx*segAngle + segAngle/2;
+  const finalMod = (360 - target + 360) % 360;
+  const rotation = 6*360 + finalMod;
+  const wheel = $("#wheel");
+  wheel.style.transition = "transform 4s cubic-bezier(0.12,0.67,0.1,0.99)";
+  wheel.style.transform = `rotate(${rotation}deg)`;
+  const tickInterval = setInterval(()=> beep(300+Math.random()*200,0.04,"square",0.03), 120);
+  setTimeout(()=>{
+    clearInterval(tickInterval);
+    const prize = WHEEL_SEGMENTS[idx];
+    state.wheelSpun = true;
+    if(prize.type==="coins") addCoins(prize.value);
+    else state[prize.type] += prize.value;
+    sfxWin();
+    haptic([40,30,40]);
+    refreshStats(["statCoins","statHints","statLives"]);
+    const unlockedNow = checkAchievements();
+    showResultModal(true, 0, prize.type==="coins"?prize.value:0, 0, unlockedNow, false, null, false, {
+      emoji:"🎉", title:"You Won!", word: prize.label, isWheel:true
+    });
+  }, 4100);
+}
+
+/* ============ GAME ENGINE ============ */
+function pickWord(category, difficulty){
+  const pool = category==="Custom" ? state.customWords : WORD_BANK[category].words;
+  let filtered = pool;
+  if(difficulty==="Easy") filtered = pool.filter(w=>w.length<=5);
+  if(difficulty==="Hard") filtered = pool.filter(w=>w.length>=7);
+  if(filtered.length===0) filtered = pool;
+  return filtered[Math.floor(Math.random()*filtered.length)];
+}
+
+function startGame(category, difficulty, mode){
+  const word = pickWord(category, difficulty);
+  const maxWrong = difficulty==="Hard" ? 4 : 6;
+  game = {
+    category, difficulty, mode, word,
+    guessed:new Set(), wrong:0, maxWrong, usedHint:false,
+    startTime:Date.now(), timerSeconds: mode==="timer" ? 60 : null, ended:false,
+  };
+  state.gamesPlayed++;
+  renderGame();
+  if(mode==="timer") startTimerLoop();
+}
+
+let timerInterval = null;
+function startTimerLoop(){
+  clearInterval(timerInterval);
+  timerInterval = setInterval(()=>{
+    if(!game || game.ended){ clearInterval(timerInterval); return; }
+    const elapsed = (Date.now()-game.startTime)/1000;
+    const remaining = Math.max(0, game.timerSeconds - elapsed);
+    const bar = $("#timerBar"); const txt = $("#timerTxt");
+    if(bar) bar.style.width = (remaining/game.timerSeconds*100)+"%";
+    if(txt) txt.textContent = Math.ceil(remaining)+"s";
+    if(remaining<=3.1 && remaining>2.9) beep(880,0.08,"square",0.05);
+    if(remaining<=0){ clearInterval(timerInterval); endGame(false, "Time's up!"); }
+  }, 200);
+}
+
+const HANGMAN_GALLOWS = "M20,170 L100,170 M40,170 L40,20 M40,20 L120,20 M120,20 L120,40";
+const HANGMAN_LIMBS = [
+  "M120,40 a14,14 0 1,1 0.1,0",
+  "M120,54 L120,105",
+  "M120,65 L100,90",
+  "M120,65 L140,90",
+  "M120,105 L102,140",
+  "M120,105 L138,140",
+];
+
+function renderGame(){
+  const wrongParts = HANGMAN_LIMBS.slice(0, game.wrong);
+  host().innerHTML = `
+    <div class="view">
+      <div class="game-top">
+        <span>${game.category} · ${game.difficulty}</span>
+        <span>${game.mode==="timer" ? "⏱️ Timer" : "Wrong: "+game.wrong+"/"+game.maxWrong}</span>
+      </div>
+      ${game.mode==="timer" ? `
+        <div class="timerbar-wrap"><div class="timerbar" id="timerBar"></div></div>
+        <div style="text-align:right; font-family:'Space Mono',monospace; font-size:0.7rem; color:var(--text-dim); margin-bottom:8px;" id="timerTxt">60s</div>
+      ` : ""}
+      <div class="stage-wrap" id="stageWrap">
+        <svg viewBox="0 0 160 180">
+          <path class="gallows-line" d="${HANGMAN_GALLOWS}"/>
+          <g id="figureGroup">
+            ${wrongParts.map(d=>`<path class="figure-line" d="${d}"/>`).join("")}
+          </g>
+        </svg>
+      </div>
+      <div class="word-row" id="wordRow"></div>
+      <div class="keyboard" id="keyboard"></div>
+      <div class="game-actions">
+        <button class="action-btn hint" id="hintBtn">💡 Hint (${state.hints})</button>
+        <button class="action-btn quit" id="quitBtn">🏳 Give Up</button>
+      </div>
+    </div>
+  `;
+  renderWordRow();
+  renderKeyboard();
+  $("#hintBtn").onclick = useHint;
+  $("#quitBtn").onclick = ()=>{ sfxClick(); endGame(false, null, true); };
+  if(game.wrong >= game.maxWrong){
+    const fg = $("#figureGroup");
+    if(fg) fg.classList.add("swing");
+  }
+  refreshStats();
+}
+
+function renderWordRow(){
+  $("#wordRow").innerHTML = game.word.split("").map(c=>{
+    const filled = game.guessed.has(c);
+    return `<div class="letter-slot ${filled?"filled":""}">${filled?c:""}</div>`;
+  }).join("");
+}
+
+function renderKeyboard(){
+  $("#keyboard").innerHTML = ALPHABET.map(l=>{
+    const cls = game.guessed.has(l) ? (game.word.includes(l) ? "correct disabled" : "wrong disabled") : "";
+    return `<div class="key ${cls}" data-l="${l}">${l}</div>`;
+  }).join("");
+  $("#keyboard").querySelectorAll(".key").forEach(k=>{
+    k.addEventListener("click", ()=> guessLetter(k.dataset.l));
+  });
+}
+
+function useHint(){
+  if(game.ended) return;
+  if(state.hints<=0){ sfxWrong(); flash($("#hintBtn")); return; }
+  const remaining = game.word.split("").filter(c=>!game.guessed.has(c));
+  if(remaining.length===0) return;
+  const letter = remaining[Math.floor(Math.random()*remaining.length)];
+  state.hints--;
+  game.usedHint = true;
+  guessLetter(letter, true);
+}
+
+function flash(el){ el.style.opacity=0.4; setTimeout(()=> el.style.opacity=1, 200); }
+
+function guessLetter(letter, fromHint){
+  if(game.ended || game.guessed.has(letter)) return;
+  game.guessed.add(letter);
+
+  if(game.word.includes(letter)){
+    sfxCorrect();
+  } else {
+    sfxWrong();
+    haptic(80);
+    game.wrong++;
+    const stageWrap = document.getElementById("stageWrap");
+    if(stageWrap){ stageWrap.classList.remove("shake"); void stageWrap.offsetWidth; stageWrap.classList.add("shake"); }
+    if(game.wrong > game.maxWrong){
+      if(state.lives>0){
+        state.lives--;
+        game.wrong = game.maxWrong;
+        refreshStats(["statLives"]);
+      } else {
+        renderGame();
+        return endGame(false);
+      }
+    }
+  }
+  renderGame();
+
+  if(game.word.split("").every(c=>game.guessed.has(c))){
+    endGame(true);
+  }
+}
+
+function endGame(won, customMsg, gaveUp){
+  if(game.ended) return;
+  game.ended = true;
+  clearInterval(timerInterval);
+  const elapsed = Math.round((Date.now()-game.startTime)/1000);
+
+  let rewardCoins = 0, rewardStars = 0, unlockedNow = [], leveledUp=false;
+
+  if(won){
+    sfxWin(); haptic([50,40,50,40,80]);
+    rewardCoins = 15;
+    if(game.difficulty==="Hard"){ rewardCoins+=15; state.hardWin=true; }
+    if(!game.usedHint){ rewardCoins+=10; state.noHintWin=true; }
+    if(game.mode==="timer"){ rewardCoins+=20; state.timerWin=true; }
+    addCoins(rewardCoins);
+    rewardStars = 10;
+    leveledUp = addStars(rewardStars);
+    state.totalWins++;
+    state.currentStreak++;
+    state.bestStreak = Math.max(state.bestStreak, state.currentStreak);
+
+    const score = rewardCoins*10 - elapsed;
+    state.leaderboard.push({category:game.category, mode:game.mode==="timer"?"Timer Challenge":(game.mode==="custom"?"Custom Words":"Single Player"), difficulty:game.difficulty, score, time:elapsed});
+    state.leaderboard.sort((a,b)=>b.score-a.score);
+    state.leaderboard = state.leaderboard.slice(0,20);
+
+    unlockedNow = checkAchievements();
+  } else {
+    sfxLose(); haptic([100,60,100]);
+    state.currentStreak = 0;
+  }
+
+  refreshStats(["statCoins","statStars"]);
+  showResultModal(won, elapsed, rewardCoins, rewardStars, unlockedNow, leveledUp, customMsg, gaveUp);
+}
+
+/* ---------------- confetti ---------------- */
+function burstConfetti(){
+  const canvas = document.createElement("canvas");
+  canvas.id = "confettiCanvas";
+  canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext("2d");
+  const colors = ["#FFC24B","#FF4F81","#33E6A0","#5B8CFF","#FFE29A"];
+  const pieces = Array.from({length:80}, ()=>({
+    x: canvas.width/2 + (Math.random()-0.5)*80,
+    y: canvas.height*0.35,
+    vx: (Math.random()-0.5)*10,
+    vy: -Math.random()*10 - 4,
+    size: 4 + Math.random()*5,
+    color: colors[Math.floor(Math.random()*colors.length)],
+    rot: Math.random()*360,
+    vr: (Math.random()-0.5)*14,
+    life: 0
+  }));
+  let frame = 0;
+  function tick(){
+    frame++;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    pieces.forEach(p=>{
+      p.vy += 0.35; p.x += p.vx; p.y += p.vy; p.rot += p.vr; p.life++;
+      ctx.save();
+      ctx.translate(p.x, p.y); ctx.rotate(p.rot*Math.PI/180);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.max(0, 1 - p.life/90);
+      ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size*0.6);
+      ctx.restore();
+    });
+    if(frame < 95) requestAnimationFrame(tick);
+    else canvas.remove();
+  }
+  tick();
+}
+
+function showResultModal(won, elapsed, coins, stars, unlockedNow, leveledUp, customMsg, gaveUp, override){
+  const overlay = document.createElement("div");
+  overlay.className = "overlay";
+  const emoji = override ? override.emoji : (won?"🎉":(gaveUp?"🏳️":"💀"));
+  const title = override ? override.title : (won?"You Win!":(customMsg||"Game Over"));
+  const wordShown = override ? override.word : game.word.toUpperCase();
+  overlay.innerHTML = `
+    <div class="result-card">
+      <div class="result-emoji">${emoji}</div>
+      <div class="result-title ${won?"win":"lose"}">${title}</div>
+      <div class="result-word">${wordShown}</div>
+      ${won && !override ? `
+        <div class="reward-row">
+          <div class="reward-pill">+$${coins}</div>
+          <div class="reward-pill">+${stars}⭐</div>
+          <div class="reward-pill">${elapsed}s</div>
+        </div>
+      `: (!won ? `<div class="reward-row"><div class="reward-pill">Streak reset</div></div>` : "")}
+      ${leveledUp ? `<div class="achieve-toast">🎖️ <b>Level Up!</b> You reached Level ${state.level}!</div>`:""}
+      ${unlockedNow.map(a=>`<div class="achieve-toast">${a.icon} <b>${a.name}</b> unlocked — +$${a.reward}</div>`).join("")}
+      <button class="result-btn" id="resultClose">Continue</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  if(won) burstConfetti();
+  $("#resultClose").onclick = ()=>{
+    sfxClick();
+    overlay.remove();
+    renderHome();
+  };
+}
+
+/* ============ SHOP ============ */
+function renderShop(){
+  setActiveNav("shop");
+  host().innerHTML = `
+    <div class="view">
+      <div class="shop-header">
+        <div class="section-title" style="margin:0;">Shop</div>
+        <div class="coin-badge">💰 ${state.coins}</div>
+      </div>
+      <div class="shop-stats">
+        <div class="shop-stat-box"><div style="font-size:1.2rem;">💡</div><div class="num">${state.hints}</div><div style="font-size:0.68rem; color:var(--text-dim);">Hints</div></div>
+        <div class="shop-stat-box"><div style="font-size:1.2rem;">❤️</div><div class="num">${state.lives}</div><div style="font-size:0.68rem; color:var(--text-dim);">Lives</div></div>
+      </div>
+      <div style="font-size:0.8rem; color:var(--text-dim); margin-bottom:10px; letter-spacing:1px; text-transform:uppercase;">Boosters</div>
+      ${SHOP_ITEMS.map(item=>`
+        <div class="shop-item">
+          <div class="info"><b>${item.icon} ${item.name}</b><div>${item.desc}</div></div>
+          <button class="buy-btn" data-key="${item.key}" ${state.coins<item.cost?"disabled":""}>$${item.cost}</button>
+        </div>
+      `).join("")}
+    </div>
+  `;
+  host().querySelectorAll(".buy-btn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const item = SHOP_ITEMS.find(i=>i.key===btn.dataset.key);
+      if(state.coins < item.cost) return;
+      sfxCoin();
+      state.coins -= item.cost;
+      state[item.type] += item.qty;
+      const unlockedNow = checkAchievements();
+      refreshStats(["statCoins", item.type==="hints"?"statHints":"statLives"]);
+      renderShop();
+      if(unlockedNow.length){
+        showResultModal(true, 0, 0, 0, unlockedNow, false, null, false, {emoji:"🛍️", title:"Purchased!", word:item.name});
+      }
+    });
+  });
+}
+
+/* ============ ACHIEVEMENTS ============ */
+function renderAchievements(){
+  setActiveNav("achievements");
+  const unlockedCount = state.unlocked.length;
+  host().innerHTML = `
+    <div class="view">
+      <div class="ach-progress">
+        <div class="big">${unlockedCount} / ${ACHIEVEMENTS.length}</div>
+        <div style="font-size:0.75rem; margin-top:2px;">Trophies Unlocked</div>
+      </div>
+      ${ACHIEVEMENTS.map(a=>{
+        const done = state.unlocked.includes(a.id);
+        return `
+          <div class="ach-item ${done?"done":""}">
+            <div class="left">
+              <span class="ach-icon">${done?a.icon:"🔒"}</span>
+              <div>
+                <div class="ach-name">${a.name}</div>
+                <div class="ach-desc">${a.desc}</div>
+              </div>
+            </div>
+            <div class="ach-reward">${done?"✓ ":"+"}$${a.reward}</div>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+/* ============ LEADERBOARD ============ */
+function renderLeaderboard(){
+  setActiveNav("leaderboard");
+  if(state.leaderboard.length===0){
+    host().innerHTML = `
+      <div class="view">
+        <div class="section-title">Leaderboard</div>
+        <div class="empty-state">
+          <span class="emoji">📊</span>
+          <div><b>No scores yet</b></div>
+          <div style="margin-top:4px;">Play a game to see your high scores here.</div>
+        </div>
+      </div>
+    `;
+    return;
+  }
+  host().innerHTML = `
+    <div class="view">
+      <div class="section-title">Leaderboard</div>
+      <div class="section-sub">Top ${state.leaderboard.length} scores</div>
+      ${state.leaderboard.map((e,i)=>`
+        <div class="lb-row">
+          <div class="lb-rank">#${i+1}</div>
+          <div class="lb-info"><b>${e.category}</b><div>${e.mode} · ${e.difficulty} · ${e.time}s</div></div>
+          <div class="lb-score">${e.score}</div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+/* ============ SAVE / DATA ============ */
+function renderData(){
+  setActiveNav("data");
+  host().innerHTML = `
+    <div class="view">
+      <div class="section-title">Save Data</div>
+      <div class="section-sub">This app doesn't use browser storage, so export your save to keep progress between sessions.</div>
+      <div class="save-box">
+        Your progress lives in memory while this tab is open.<br>
+        Export a save file, and import it next time you open the app.
+        <div class="save-actions">
+          <button id="exportBtn">⬇ Export Save</button>
+          <label style="flex:1;">
+            <input type="file" id="importFile" accept="application/json" style="display:none;">
+            <button id="importBtn" style="width:100%;">⬆ Import Save</button>
+          </label>
+        </div>
+        <div class="save-actions">
+          <button id="resetBtn" style="color:var(--pink);">↺ Reset Progress</button>
+        </div>
+      </div>
+    </div>
+  `;
+  $("#exportBtn").onclick = ()=>{
+    sfxClick();
+    const blob = new Blob([JSON.stringify(state,null,2)], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "hangman_x_save.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  $("#importBtn").onclick = ()=> $("#importFile").click();
+  $("#importFile").onchange = (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      try{
+        const loaded = JSON.parse(reader.result);
+        state = Object.assign(JSON.parse(JSON.stringify(DEFAULT_STATE)), loaded);
+        refreshStats();
+        renderData();
+        alert("Save imported successfully!");
+      }catch(err){
+        alert("Invalid save file.");
+      }
+    };
+    reader.readAsText(file);
+  };
+  $("#resetBtn").onclick = ()=>{
+    if(confirm("Reset all progress? This cannot be undone.")){
+      state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+      refreshStats();
+      renderData();
+    }
+  };
+}
+
+/* ============ NAV WIRING ============ */
+document.querySelectorAll(".nav-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    sfxClick();
+    const nav = btn.dataset.nav;
+    if(nav==="home") renderHome();
+    else if(nav==="shop") renderShop();
+    else if(nav==="achievements") renderAchievements();
+    else if(nav==="leaderboard") renderLeaderboard();
+    else if(nav==="data") renderData();
+  });
+});
+</script>
+</body>
+</html>
